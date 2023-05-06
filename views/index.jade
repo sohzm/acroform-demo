@@ -1,36 +1,33 @@
 extends layout
 
 block content
-  script(src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.3.1/jspdf.umd.min.js")
-
-  h1 Home
-
-  button(style='margin-bottom: 20px; margin-right: 12px;' type='button', onclick='loadPDF()') Load PDF
-  Load Button Loads pdf from the db. 
-  br
-
-  button(style='margin-bottom: 20px; margin-right: 12px;' type='button', onclick='savePDF()') Save PDF
-  Save Button Saves the pdf to the db.
-  br
-
-  button(style='margin-bottom: 20px; margin-right: 12px;' type='button', onclick='consoleLog()') LOG
-
-  div(id='pageContainer' width='100%', height='400px' style='border:2px black solid; position:relative;')
-
-  script(src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf.min.js")
-
   link(rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf_viewer.min.css")
-
+  script(src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.3.1/jspdf.umd.min.js")
+  script(src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf.min.js")
   script(src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf_viewer.min.js")
   script(src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.js")
   script(src="https://cdnjs.cloudflare.com/ajax/libs/downloadjs/1.4.8/download.min.js")
 
+  h1 Home
+
+  button(style='margin-bottom: 20px; margin-right: 12px;' type='button', onclick='loadPDF()') Load PDF
+  span Load Button Loads pdf from the db. 
+  br
+
+  button(style='margin-bottom: 20px; margin-right: 12px;' id='save-btn' type='button', onclick='savePDF()') Save PDF
+  span(id='text') Save Button Saves the pdf to the db.
+  br
+
+  div(id='pageContainer' width='100%', height='400px' style='border:2px black solid; position:relative;')
 
   script.
-    base64Data = ""
-    id = ""
+    const { PDFDocument } = PDFLib
+
     var pdfjsLib = window['pdfjs-dist/build/pdf'];
     var pdfjsViewer = window['pdfjs-dist/web/pdf_viewer'];
+
+    base64Data = ""
+    id = ""
 
     function base64ToArrayBuffer(base64) {
         var binaryString = atob(base64);
@@ -41,14 +38,14 @@ block content
         return bytes.buffer;
     }
 
-    function _arrayBufferToBase64( buffer ) {
+    function arrayBufferToBase64(buffer) {
         var binary = '';
-        var bytes = new Uint8Array( buffer );
+        var bytes = new Uint8Array(buffer);
         var len = bytes.byteLength;
         for (var i = 0; i < len; i++) {
             binary += String.fromCharCode( bytes[ i ] );
         }
-        return window.btoa( binary );
+        return window.btoa(binary);
     }
 
     function getSelectedRadioIndex(name) {
@@ -58,7 +55,7 @@ block content
           return i;
         }
       }
-      return -1; // no button in the group is selected
+      return -1; 
     }
 
     async function loadPDF() {
@@ -107,18 +104,7 @@ block content
         console.log('Fetch Error :-S', err);
       });
     }
-    function consoleLog() {
-      const annotationLayer = document.querySelector('.annotationLayer');
-      const formFieldValues = {};
-      annotationLayer.querySelectorAll('input, select').forEach(input => {
-        const name = input.name;
-        const value = input.type === 'radio' ? "uwuw" : input.value;
-        formFieldValues[name] = value;
-      });
-      console.log(formFieldValues);
-    }
 
-    const { PDFDocument } = PDFLib
     async function savePDF() {
       const annotationLayer = document.querySelector('.annotationLayer');
       const formFieldValues = {};
@@ -158,12 +144,14 @@ block content
         }
       }
       const pdfBytes = await pdfDoc.save();
-      var final = _arrayBufferToBase64(pdfBytes);
+      var final = arrayBufferToBase64(pdfBytes);
       fetch("/users/save", {
         method: "POST",
         headers: {'Content-Type': 'application/json'}, 
         body: JSON.stringify({"Pdf": final})
       }).then(res => {
+        document.getElementById("text").innerHTML = "Data Successfully Uploaded, Reload the page and data persists";
+        document.getElementById("save-btn").disabled = true;
         console.log("Request complete! response:", res);
       });
     }
