@@ -34,14 +34,12 @@ router.get('/pdf',async(req,res)=>{
 router.post('/save',async(req,res)=>{
   try{
     fs.writeFileSync(pdf,req.body.Pdf,{encoding: 'base64'})
-    let pdfdata=await Pdfmodel.updateOne({_id:req.body.id 
-    },{
-      $set:{Pdf:req.body.Pdf}
-    })
+    const pdfData = req.body.Pdf;
+
+    const result = await Pdfmodel.updateOne({ Pdf: pdfData });
     res.status(200).send("Saved successfully")
   }
   catch{
-    console.log(req.body)
     res.status(500).send("Internal server error")
   }
 })

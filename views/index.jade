@@ -1,5 +1,169 @@
 extends layout
 
 block content
-  h1= title
-  p Welcome to #{title}
+  script(src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.3.1/jspdf.umd.min.js")
+
+  h1 Home
+
+  button(style='margin-bottom: 20px; margin-right: 12px;' type='button', onclick='loadPDF()') Load PDF
+  Load Button Loads pdf from the db. 
+  br
+
+  button(style='margin-bottom: 20px; margin-right: 12px;' type='button', onclick='savePDF()') Save PDF
+  Save Button Saves the pdf to the db.
+  br
+
+  button(style='margin-bottom: 20px; margin-right: 12px;' type='button', onclick='consoleLog()') LOG
+
+  div(id='pageContainer' width='100%', height='400px' style='border:2px black solid; position:relative;')
+
+  script(src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf.min.js")
+
+  link(rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf_viewer.min.css")
+
+  script(src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf_viewer.min.js")
+  script(src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.js")
+  script(src="https://cdnjs.cloudflare.com/ajax/libs/downloadjs/1.4.8/download.min.js")
+
+
+  script.
+    base64Data = ""
+    id = ""
+    var pdfjsLib = window['pdfjs-dist/build/pdf'];
+    var pdfjsViewer = window['pdfjs-dist/web/pdf_viewer'];
+
+    function base64ToArrayBuffer(base64) {
+        var binaryString = atob(base64);
+        var bytes = new Uint8Array(binaryString.length);
+        for (var i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        return bytes.buffer;
+    }
+
+    function _arrayBufferToBase64( buffer ) {
+        var binary = '';
+        var bytes = new Uint8Array( buffer );
+        var len = bytes.byteLength;
+        for (var i = 0; i < len; i++) {
+            binary += String.fromCharCode( bytes[ i ] );
+        }
+        return window.btoa( binary );
+    }
+
+    function getSelectedRadioIndex(name) {
+      const radioGroup = document.getElementsByName(name);
+      for (let i = 0; i < radioGroup.length; i++) {
+        if (radioGroup[i].checked) {
+          return i;
+        }
+      }
+      return -1; // no button in the group is selected
+    }
+
+    async function loadPDF() {
+      fetch('/users/pdf').then(function(response) {
+        return response.json();
+      }).then(function(data) {
+        base64Data = data[0]["Pdf"];
+        pdfData = atob(data[0]["Pdf"]);
+
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf.worker.min.js';
+        var container = document.getElementById("pageContainer");
+        var eventBus = new pdfjsViewer.EventBus();
+
+        var loadingTask = pdfjsLib.getDocument({data: pdfData});
+        loadingTask.promise.then(function(doc) {
+          doc.getPage(1).then(function (pdfPage) {
+            var pdfPageView = new pdfjsViewer.PDFPageView({
+              container,
+              id: 1,
+              scale: 1,
+              defaultViewport: pdfPage.getViewport({ scale: 1 }),
+              eventBus,
+              annotationLayerFactory: new pdfjsViewer.DefaultAnnotationLayerFactory(),
+              renderInteractiveForms: true,
+            });
+            pdfPageView.setPdfPage(pdfPage);
+            pdfPageView.draw();
+            setTimeout(() => {
+              PDFDocument.load(base64ToArrayBuffer(base64Data)).then(function(pdfDoc) {
+                const form = pdfDoc.getForm();
+                const dropdowns = document.querySelectorAll('select');
+                dropdowns.forEach(dropdown => {
+                  const dropdownx = form.getDropdown(dropdown.getAttribute('name'));
+                  const selectedOption = dropdownx.getSelected();
+                  dropdown.value = selectedOption;
+                });
+              }, function (reason) {
+                console.error(reason);
+              });
+            }, 500);
+          });
+        }, function (reason) {
+          console.error(reason);
+        });
+      }).catch(function(err) {
+        console.log('Fetch Error :-S', err);
+      });
+    }
+    function consoleLog() {
+      const annotationLayer = document.querySelector('.annotationLayer');
+      const formFieldValues = {};
+      annotationLayer.querySelectorAll('input, select').forEach(input => {
+        const name = input.name;
+        const value = input.type === 'radio' ? "uwuw" : input.value;
+        formFieldValues[name] = value;
+      });
+      console.log(formFieldValues);
+    }
+
+    const { PDFDocument } = PDFLib
+    async function savePDF() {
+      const annotationLayer = document.querySelector('.annotationLayer');
+      const formFieldValues = {};
+      annotationLayer.querySelectorAll('input, select').forEach(input => {
+        const name = input.name;
+        const value = input.type === 'radio' ? "uwuw" : input.value;
+        formFieldValues[name] = value;
+      });
+
+      const formPdfBytes = base64ToArrayBuffer(base64Data);
+      const pdfDoc = await PDFDocument.load(formPdfBytes);
+      const form = pdfDoc.getForm();
+
+      for (const i in formFieldValues) {
+        fieldName = i
+        fieldValue = formFieldValues[i]
+        const field = form.getField(fieldName);
+        if (!field) {
+          console.warn(`Warning: field ${fieldName} not found in PDF form.`);
+          continue;
+        }
+        var options, matchingOption;
+        switch (field.constructor.name) {
+          case 'PDFTextField':
+            field.setText(fieldValue);
+            break;
+          case 'PDFDropdown':
+            options = field.getOptions();
+            matchingOption = fieldValue;
+            field.select(matchingOption);
+            break;
+          case 'PDFRadioGroup':
+            field.select(field.getOptions()[getSelectedRadioIndex(fieldName)]);
+            break;
+          default:
+            console.warn(`Warning: unsupported field type ${field.constructor.name} in ${fieldName}.`);
+        }
+      }
+      const pdfBytes = await pdfDoc.save();
+      var final = _arrayBufferToBase64(pdfBytes);
+      fetch("/users/save", {
+        method: "POST",
+        headers: {'Content-Type': 'application/json'}, 
+        body: JSON.stringify({"Pdf": final})
+      }).then(res => {
+        console.log("Request complete! response:", res);
+      });
+    }
