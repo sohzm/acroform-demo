@@ -8,7 +8,7 @@ block content
   script(src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.js")
   script(src="https://cdnjs.cloudflare.com/ajax/libs/downloadjs/1.4.8/download.min.js")
 
-  h1 Home
+  h1 NestJS Acroform 
 
   button(style='margin-bottom: 20px; margin-right: 12px;' type='button', onclick='loadPDF()') Load PDF
   span Load Button Loads pdf from the db. 
@@ -50,7 +50,6 @@ block content
 
     function getSelectedRadioIndex(name) {
       const radioGroup = document.getElementsByName(name);
-      console.log(radioGroup)
       for (let i = 0; i < radioGroup.length; i++) {
         if (radioGroup[i].checked) {
           return i;
@@ -120,12 +119,15 @@ block content
     }
 
     async function savePDF() {
-      const annotationLayer = document.querySelector('.annotationLayer');
+      const annotationLayer = document.querySelector('#pageContainer');
       const formFieldValues = {};
-      annotationLayer.querySelectorAll('input, select').forEach(input => {
+      document.querySelectorAll('input, select, textarea').forEach(input => {
         const name = input.name;
         const value = input.type === 'radio' ? "uwuw" : input.value;
         formFieldValues[name] = value;
+        if (input.type == 'text') {
+          console.log(name, value, input.type)
+        }
       });
 
       const formPdfBytes = base64ToArrayBuffer(base64Data);
@@ -152,10 +154,9 @@ block content
             break;
           case 'PDFRadioGroup':
             const tempRadio = getSelectedRadioIndex(fieldName);
-            if (tempRadio == -1) {
-              break;
+            if (tempRadio != -1) {
+              field.select(field.getOptions()[tempRadio]);
             }
-            field.select(field.getOptions()[tempRadio]);
             break;
           default:
             console.warn(`Warning: unsupported field type ${field.constructor.name} in ${fieldName}.`);
