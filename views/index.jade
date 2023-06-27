@@ -18,7 +18,7 @@ block content
   span(id='text') Save Button Saves the pdf to the db.
   br
 
-  div(id='pageContainer' width='100%', height='400px' style='border:2px black solid; position:relative;')
+  div(id='pageContainer' width='100%', height='400px' style='border:2px black solid; ')
 
   script.
     const { PDFDocument } = PDFLib
@@ -50,6 +50,7 @@ block content
 
     function getSelectedRadioIndex(name) {
       const radioGroup = document.getElementsByName(name);
+      console.log(radioGroup)
       for (let i = 0; i < radioGroup.length; i++) {
         if (radioGroup[i].checked) {
           return i;
@@ -71,32 +72,45 @@ block content
 
         var loadingTask = pdfjsLib.getDocument({data: pdfData});
         loadingTask.promise.then(function(doc) {
-          doc.getPage(1).then(function (pdfPage) {
-            var pdfPageView = new pdfjsViewer.PDFPageView({
-              container,
-              id: 1,
-              scale: 1,
-              defaultViewport: pdfPage.getViewport({ scale: 1 }),
-              eventBus,
-              annotationLayerFactory: new pdfjsViewer.DefaultAnnotationLayerFactory(),
-              renderInteractiveForms: true,
-            });
-            pdfPageView.setPdfPage(pdfPage);
-            pdfPageView.draw();
-            setTimeout(() => {
-              PDFDocument.load(base64ToArrayBuffer(base64Data)).then(function(pdfDoc) {
-                const form = pdfDoc.getForm();
-                const dropdowns = document.querySelectorAll('select');
-                dropdowns.forEach(dropdown => {
-                  const dropdownx = form.getDropdown(dropdown.getAttribute('name'));
-                  const selectedOption = dropdownx.getSelected();
-                  dropdown.value = selectedOption;
-                });
-              }, function (reason) {
-                console.error(reason);
+          var numPages = doc.numPages;
+          var lastPromise; // will be used to chain promises
+          lastPromise = doc.getMetadata().then(function (data) {});
+
+          var loadPage = function (pageNum) {
+            return doc.getPage(pageNum).then(function (pdfPage) {
+              var pdfPageView = new pdfjsViewer.PDFPageView({
+                container,
+                id: pageNum,
+                scale: 1,
+                defaultViewport: pdfPage.getViewport({ scale: 1 }),
+                eventBus,
+                annotationLayerFactory: new pdfjsViewer.DefaultAnnotationLayerFactory(),
+                renderInteractiveForms: true,
               });
-            }, 500);
-          });
+              pdfPageView.setPdfPage(pdfPage);
+              return pdfPageView.draw();
+            });
+          };
+
+          for (var i = 1; i <= numPages; i++) {
+            lastPromise = lastPromise.then(loadPage.bind(null, i));
+          }
+
+          return lastPromise;
+        }).then(function () {
+          setTimeout(() => {
+            PDFDocument.load(base64ToArrayBuffer(base64Data)).then(function(pdfDoc) {
+              const form = pdfDoc.getForm();
+              const dropdowns = document.querySelectorAll('select');
+              dropdowns.forEach(dropdown => {
+                const dropdownx = form.getDropdown(dropdown.getAttribute('name'));
+                const selectedOption = dropdownx.getSelected();
+                dropdown.value = selectedOption;
+              });
+            }, function (reason) {
+              console.error(reason);
+            });
+          }, 500);
         }, function (reason) {
           console.error(reason);
         });
@@ -137,7 +151,11 @@ block content
             field.select(matchingOption);
             break;
           case 'PDFRadioGroup':
-            field.select(field.getOptions()[getSelectedRadioIndex(fieldName)]);
+            const tempRadio = getSelectedRadioIndex(fieldName);
+            if (tempRadio == -1) {
+              break;
+            }
+            field.select(field.getOptions()[tempRadio]);
             break;
           default:
             console.warn(`Warning: unsupported field type ${field.constructor.name} in ${fieldName}.`);
