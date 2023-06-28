@@ -10,11 +10,11 @@ block content
 
   h1 NestJS Acroform 
 
-  button(style='margin-bottom: 20px; margin-right: 12px;' type='button', onclick='loadPDF()') Load PDF
-  span Load Button Loads pdf from the db. 
+  button(style='margin-bottom: 20px; margin-right: 12px;' id='load-btn' type='button', onclick='loadPDF()') Load PDF
+  span(id='load-pdf') Load Button Loads pdf from the db. 
   br
 
-  button(style='margin-bottom: 20px; margin-right: 12px;' id='save-btn' type='button', onclick='savePDF()') Save PDF
+  button(style='margin-bottom: 20px; margin-right: 12px;' id='save-btn' disabled='true' type='button', onclick='savePDF()') Save PDF
   span(id='text') Save Button Saves the pdf to the db.
   br
 
@@ -59,9 +59,15 @@ block content
     }
 
     async function loadPDF() {
+      document.getElementById("load-pdf").innerHTML = "Loading...";
+      document.getElementById("load-btn").disabled = true;
+
       fetch('/users/pdf').then(function(response) {
         return response.json();
       }).then(function(data) {
+
+        document.getElementById("save-btn").disabled = false;
+
         base64Data = data[0]["Pdf"];
         pdfData = atob(data[0]["Pdf"]);
 
