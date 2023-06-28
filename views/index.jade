@@ -66,6 +66,7 @@ block content
         return response.json();
       }).then(function(data) {
 
+        document.getElementById("load-pdf").innerHTML = "Loaded PDF from DB.";
         document.getElementById("save-btn").disabled = false;
 
         base64Data = data[0]["Pdf"];
