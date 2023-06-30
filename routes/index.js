@@ -3,11 +3,7 @@ var router = express.Router();
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
-  res.render('index', { title: 'NestJS Acroform' });
+  res.render('index', { title: 'Acroform Demo' });
 });
-
-
-
-
 
 module.exports = router;

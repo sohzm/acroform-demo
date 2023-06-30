@@ -1,5 +1,5 @@
-# NestJS Acroform PDF
-Acroform PDF renderer and saver in NestJS. Rendering is done using pdf.js and filling is handled by pdf-lib.
+# Acroform PDF Demo
+Acroform PDF renderer and saving demo. Rendering is done using pdf.js and filling is handled by pdf-lib.
 
 ### Getting started
 ```bash
